@@ -79,22 +79,30 @@ def get_dashboard_metrics() -> Dict[str, Any]:
     total_response = baserow_client.get_rows(settings.baserow_table_leads, {"size": 1})
     total_leads = total_response.get("count", 0)
     
-    # Baserow single_select fields require filter type "single_select_equal"
-    # The filter key format is: filter__field_{FIELD_ID}__single_select_equal
-    # The value must be the display text of the option (e.g., "Qualified")
-    filter_key = f"filter__field_{LEAD_STATUS_FIELD_ID}__single_select_equal"
+    # Use json filters with the status option IDs instead of query string
+    import json
     
-    # Get qualified leads
+    qualified_id = str(LEAD_STATUS.get("Qualified", ""))
+    qualified_filter = json.dumps({
+        "filter_type": "AND",
+        "filters": [{"type": "single_select_equal", "field": "status", "value": qualified_id}]
+    })
+    
     qualified_response = baserow_client.get_rows(
         settings.baserow_table_leads, 
-        {"size": 1, filter_key: "Qualified"}
+        {"size": 1, "filters": qualified_filter}
     )
     qualified_leads = qualified_response.get("count", 0)
     
-    # Get appointment booked leads
+    appointment_id = str(LEAD_STATUS.get("Appointment Booked", ""))
+    appointment_filter = json.dumps({
+        "filter_type": "AND",
+        "filters": [{"type": "single_select_equal", "field": "status", "value": appointment_id}]
+    })
+    
     appointment_response = baserow_client.get_rows(
         settings.baserow_table_leads, 
-        {"size": 1, filter_key: "Appointment Booked"}
+        {"size": 1, "filters": appointment_filter}
     )
     appointment_leads = appointment_response.get("count", 0)
     
@@ -145,8 +153,8 @@ def update_appointment(appointment_id: int, appt_in: AppointmentUpdate) -> Dict[
 def get_all_appointments() -> list[Dict[str, Any]]:
     """Retrieve all appointments from Baserow."""
     logger.info("Fetching all appointments")
-    appointments = baserow_client.list_rows(settings.baserow_table_appointments)
-    return appointments
+    response = baserow_client.get_rows(settings.baserow_table_appointments)
+    return response.get("results", [])
 
 def delete_appointment(appointment_id: int) -> None:
     """Delete an appointment from Baserow."""
