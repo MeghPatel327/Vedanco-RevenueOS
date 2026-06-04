@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Calendar, Mail, Phone, Building, Briefcase } from "lucide-react";
+import { ArrowLeft, Sparkles, Calendar, Mail, Phone, Building, Briefcase, Clock } from "lucide-react";
+import { Activity } from "@/lib/api";
 
 export default function LeadDetailsPage() {
   const params = useParams();
@@ -18,6 +19,7 @@ export default function LeadDetailsPage() {
   const id = Number(params.id);
 
   const [lead, setLead] = useState<Lead | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [qualifying, setQualifying] = useState(false);
   const [booking, setBooking] = useState(false);
@@ -26,13 +28,17 @@ export default function LeadDetailsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchLead();
+    fetchData();
   }, [id]);
 
-  const fetchLead = async () => {
+  const fetchData = async () => {
     try {
-      const data = await api.getLeadById(id);
-      setLead(data);
+      const [leadData, activitiesData] = await Promise.all([
+        api.getLeadById(id),
+        api.getActivities(id)
+      ]);
+      setLead(leadData);
+      setActivities(activitiesData);
     } catch (err: any) {
       toast.error("Failed to fetch lead: " + err.message);
     } finally {
@@ -46,7 +52,7 @@ export default function LeadDetailsPage() {
     try {
       const result = await api.qualifyLead(id);
       toast.success(result.message);
-      fetchLead(); // Refresh data
+      fetchData(); // Refresh data
     } catch (err: any) {
       toast.error("Qualification failed: " + err.message);
     } finally {
@@ -65,7 +71,7 @@ export default function LeadDetailsPage() {
       });
       toast.success("Appointment booked successfully!");
       setDialogOpen(false);
-      fetchLead(); // Refresh data
+      fetchData(); // Refresh data
     } catch (err: any) {
       toast.error("Failed to book appointment: " + err.message);
     } finally {
@@ -187,6 +193,34 @@ export default function LeadDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Activity Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activities.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-4">No activities logged yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {activities.map((activity) => (
+                <div key={activity.id} className="flex gap-4 p-4 border rounded-lg bg-card">
+                  <div className="mt-1 bg-primary/10 p-2 rounded-full h-8 w-8 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{activity.activity_type || "System Activity"}</span>
+                      <span className="text-xs text-muted-foreground">{activity.timestamp}</span>
+                    </div>
+                    <p className="text-sm mt-1">{activity.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
     </div>
   );

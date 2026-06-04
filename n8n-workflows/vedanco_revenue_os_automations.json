@@ -1,0 +1,310 @@
+{
+  "name": "Vedanco RevenueOS Master Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-created",
+        "options": {}
+      },
+      "id": "webhook-lead-created",
+      "name": "Webhook: Lead Created",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 200],
+      "webhookId": "lead-created-trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sendgrid.com/v3/mail/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_SENDGRID_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "personalizations[0].to[0].email",
+              "value": "={{ $json.body.email }}"
+            },
+            {
+              "name": "from.email",
+              "value": "hello@vedanco.com"
+            },
+            {
+              "name": "subject",
+              "value": "Welcome to Vedanco RevenueOS!"
+            },
+            {
+              "name": "content[0].type",
+              "value": "text/plain"
+            },
+            {
+              "name": "content[0].value",
+              "value": "Hi {{ $json.body.name }}, we have received your request."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-welcome-email",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [440, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/activities",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "lead_id",
+              "value": "={{ $('Webhook: Lead Created').item.json.body.lead_id }}"
+            },
+            {
+              "name": "activity_type",
+              "value": "Email Sent"
+            },
+            {
+              "name": "description",
+              "value": "Welcome email was successfully sent via SendGrid."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-activity-lead-created",
+      "name": "Log Activity to FastAPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-booked",
+        "options": {}
+      },
+      "id": "webhook-appointment-booked",
+      "name": "Webhook: Appointment Booked",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 400],
+      "webhookId": "appointment-booked-trigger"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "calendarId": "primary",
+        "start": "={{ $json.body.appointment_date }}T{{ $json.body.appointment_time }}:00Z",
+        "end": "={{ $json.body.appointment_date }}T{{ $json.body.appointment_time_end }}:00Z",
+        "summary": "Vedanco Consultation with {{ $json.body.lead_name }}",
+        "options": {}
+      },
+      "id": "google-calendar-sync",
+      "name": "Google Calendar Sync",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/activities",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "lead_id",
+              "value": "={{ $('Webhook: Appointment Booked').item.json.body.lead_id }}"
+            },
+            {
+              "name": "activity_type",
+              "value": "System Action"
+            },
+            {
+              "name": "description",
+              "value": "Appointment synced to Google Calendar."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-activity-appt-booked",
+      "name": "Log Calendar Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "minutesInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "cron-appointment-reminder",
+      "name": "Daily Appointment Reminder Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 600]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:8000/appointments/upcoming",
+        "options": {}
+      },
+      "id": "fetch-upcoming-appointments",
+      "name": "Fetch Upcoming Appointments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [440, 600]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body",
+        "options": {}
+      },
+      "id": "item-lists-appointments",
+      "name": "Split Appointments",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 1,
+      "position": [640, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/YOUR_SID/Messages.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic BASE64_ENCODED_CREDENTIALS"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{ $json.lead_phone }}"
+            },
+            {
+              "name": "From",
+              "value": "YOUR_TWILIO_NUMBER"
+            },
+            {
+              "name": "Body",
+              "value": "Reminder: Your appointment with Vedanco is tomorrow at {{ $json.appointment_time }}."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-reminder",
+      "name": "Send SMS Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [840, 600]
+    }
+  ],
+  "connections": {
+    "Webhook: Lead Created": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Log Activity to FastAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Appointment Booked": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar Sync": {
+      "main": [
+        [
+          {
+            "node": "Log Calendar Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Appointment Reminder Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Upcoming Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Upcoming Appointments": {
+      "main": [
+        [
+          {
+            "node": "Split Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Appointments": {
+      "main": [
+        [
+          {
+            "node": "Send SMS Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "vedanco-revos-1.0.0"
+}

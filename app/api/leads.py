@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
 from typing import List
-from app.models.schemas import LeadCreate, LeadResponse
+from app.models.schemas import LeadCreate, LeadResponse, LeadUpdate, ErrorResponse
 from app.services import baserow_service
 from app.utils.logger import logger
 
@@ -27,3 +27,17 @@ def get_lead_by_id(id: int):
     logger.info(f"Endpoint hit: GET /lead/{id}")
     lead = baserow_service.get_lead_by_id(id)
     return lead
+
+@router.put("/{id}", response_model=LeadResponse)
+def update_lead(id: int, lead_in: LeadUpdate):
+    """Update a specific lead by ID."""
+    logger.info(f"Endpoint hit: PUT /lead/{id}")
+    lead = baserow_service.update_lead(id, lead_in)
+    return lead
+
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lead(id: int):
+    """Delete a specific lead by ID."""
+    logger.info(f"Endpoint hit: DELETE /lead/{id}")
+    baserow_service.delete_lead(id)
+    return None

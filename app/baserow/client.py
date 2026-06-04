@@ -42,4 +42,9 @@ class BaserowClient:
         endpoint = f"/database/rows/table/{table_id}/{row_id}/?user_field_names=true"
         return self._request("PATCH", endpoint, data=data)
 
+    def delete_row(self, table_id: int, row_id: int) -> None:
+        """Delete an existing row."""
+        endpoint = f"/database/rows/table/{table_id}/{row_id}/"
+        self._request("DELETE", endpoint)
+
 baserow_client = BaserowClient()

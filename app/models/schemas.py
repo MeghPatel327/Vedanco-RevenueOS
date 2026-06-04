@@ -13,11 +13,26 @@ class LeadCreate(BaseModel):
     service: Optional[str] = Field(None, example="Consulting")
     notes: Optional[str] = Field(None, example="Interested in pricing.")
 
+class LeadUpdate(BaseModel):
+    """Schema for updating an existing lead."""
+    name: Optional[str] = Field(None, example="John Doe")
+    email: Optional[EmailStr] = Field(None, example="john@example.com")
+    phone: Optional[str] = Field(None, example="+1234567890")
+    company: Optional[str] = Field(None, example="Acme Corp")
+    source: Optional[str] = Field(None, example="Website")
+    service: Optional[str] = Field(None, example="Consulting")
+    notes: Optional[str] = Field(None, example="Interested in pricing.")
+
 class AppointmentCreate(BaseModel):
     """Schema for booking an appointment."""
     lead_id: int = Field(..., example=1)
     appointment_date: str = Field(..., example="2024-05-20")
     appointment_time: str = Field(..., example="14:30")
+
+class AppointmentUpdate(BaseModel):
+    """Schema for updating an appointment."""
+    appointment_date: Optional[str] = Field(None, example="2024-05-21")
+    appointment_time: Optional[str] = Field(None, example="15:00")
 
 # Response Models
 class LeadResponse(BaseModel):
@@ -53,6 +68,25 @@ class AppointmentResponse(BaseModel):
     appointment_time: str
     created_at: str
 
+    class Config:
+        extra = "ignore"
+
+class ActivityResponse(BaseModel):
+    """Schema for returning activity data."""
+    id: int
+    activity_type: Optional[str] = None
+    description: Optional[str] = None
+    timestamp: str
+    lead: List[Any] = []
+    
+    @field_validator("activity_type", mode="before")
+    @classmethod
+    def extract_single_select_value(cls, v):
+        """Extract just the display value string."""
+        if isinstance(v, dict):
+            return v.get("value")
+        return v
+        
     class Config:
         extra = "ignore"
 

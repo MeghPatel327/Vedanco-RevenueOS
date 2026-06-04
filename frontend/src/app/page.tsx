@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, DashboardMetrics } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState, useMemo } from "react";
+import { api, DashboardMetrics, Lead } from "@/lib/api";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Users, CheckCircle, CalendarDays, Percent } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
+    const fetchData = async () => {
       try {
-        const data = await api.getDashboardMetrics();
-        setMetrics(data);
+        const [metricsData, leadsData] = await Promise.all([
+          api.getDashboardMetrics(),
+          api.getLeads()
+        ]);
+        setMetrics(metricsData);
+        setLeads(leadsData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -22,8 +30,26 @@ export default function DashboardPage() {
       }
     };
 
-    fetchMetrics();
+    fetchData();
   }, []);
+
+  const sourceData = useMemo(() => {
+    const counts = leads.reduce((acc, lead) => {
+      const source = lead.source || "Unknown";
+      acc[source] = (acc[source] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [leads]);
+
+  const statusData = useMemo(() => {
+    const counts = leads.reduce((acc, lead) => {
+      const status = lead.status || "Unknown";
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [leads]);
 
   if (loading) {
     return (
@@ -95,6 +121,55 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics.conversion_rate}%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Lead Source Breakdown</CardTitle>
+            <CardDescription>Where your leads are coming from.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={sourceData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }: any) => `${name || 'Unknown'} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {sourceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1">
+          <CardHeader>
+            <CardTitle>Lead Status Breakdown</CardTitle>
+            <CardDescription>Current pipeline status.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={statusData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                <Tooltip cursor={{ fill: 'transparent' }} />
+                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
