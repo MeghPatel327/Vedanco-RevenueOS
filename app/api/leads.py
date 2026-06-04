@@ -1,35 +1,29 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import Any, Dict, List
-from app.models.schemas import LeadCreate
+from fastapi import APIRouter, status
+from typing import List
+from app.models.schemas import LeadCreate, LeadResponse
 from app.services import baserow_service
-from requests.exceptions import RequestException
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/lead", tags=["Leads"])
 leads_router = APIRouter(prefix="/leads", tags=["Leads"])
 
-@router.post("", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=LeadResponse, status_code=status.HTTP_201_CREATED)
 def create_lead(lead_in: LeadCreate):
-    try:
-        lead = baserow_service.create_lead(lead_in)
-        return lead
-    except RequestException as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Baserow API error: {str(e)}")
+    """Create a new lead."""
+    logger.info("Endpoint hit: POST /lead")
+    lead = baserow_service.create_lead(lead_in)
+    return lead
 
-@leads_router.get("", response_model=List[Dict[str, Any]])
+@leads_router.get("", response_model=List[LeadResponse])
 def get_leads():
-    try:
-        leads = baserow_service.get_leads()
-        return leads
-    except RequestException as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Baserow API error: {str(e)}")
+    """Get all leads."""
+    logger.info("Endpoint hit: GET /leads")
+    leads = baserow_service.get_leads()
+    return leads
 
-@router.get("/{id}", response_model=Dict[str, Any])
+@router.get("/{id}", response_model=LeadResponse)
 def get_lead_by_id(id: int):
-    try:
-        lead = baserow_service.get_lead_by_id(id)
-        return lead
-    except RequestException as e:
-        # Check if it's a 404 from Baserow
-        if e.response is not None and e.response.status_code == 404:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Baserow API error: {str(e)}")
+    """Get a specific lead by ID."""
+    logger.info(f"Endpoint hit: GET /lead/{id}")
+    lead = baserow_service.get_lead_by_id(id)
+    return lead

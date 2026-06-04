@@ -1,14 +1,13 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 from app.models.schemas import DashboardMetrics
 from app.services import baserow_service
-from requests.exceptions import RequestException
+from app.utils.logger import logger
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("", response_model=DashboardMetrics)
 def get_dashboard():
-    try:
-        metrics = baserow_service.get_dashboard_metrics()
-        return metrics
-    except RequestException as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Baserow API error: {str(e)}")
+    """Get dashboard metrics for leads and conversion rates."""
+    logger.info("Endpoint hit: GET /dashboard")
+    metrics = baserow_service.get_dashboard_metrics()
+    return metrics
