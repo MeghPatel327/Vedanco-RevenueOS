@@ -47,15 +47,16 @@ settings.baserow_table_activities = TABLES.get("Activities", 0)
 # Extract Status and Activity Options dynamically
 LEAD_STATUS = {}
 ACTIVITY_TYPES = {}
+LEAD_STATUS_FIELD_ID = None
 
 for table in crm_data.get("tables", []):
     if table["name"] == "Leads":
         for field in table.get("fields", []):
             if field["name"] == "status":
+                LEAD_STATUS_FIELD_ID = field.get("id")
                 LEAD_STATUS = {opt["value"]: opt["id"] for opt in field.get("options", [])}
     
     if table["name"] == "Activities":
         for field in table.get("fields", []):
             if field["name"] == "activity_type":
                 ACTIVITY_TYPES = {opt["value"]: opt["id"] for opt in field.get("options", [])}
-

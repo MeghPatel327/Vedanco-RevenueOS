@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Any, List
 from datetime import date
 
@@ -30,11 +30,20 @@ class LeadResponse(BaseModel):
     source: Optional[str] = None
     service: Optional[str] = None
     notes: Optional[str] = None
-    status: Optional[Any] = None # Assuming Baserow returns an object or int
+    status: Optional[str] = None
     created_at: Optional[str] = None
     
+    @field_validator("source", "status", mode="before")
+    @classmethod
+    def extract_single_select_value(cls, v):
+        """Baserow returns single_select fields as dicts like {'id': 123, 'value': 'Website', 'color': 'green'}.
+        Extract just the display value string."""
+        if isinstance(v, dict):
+            return v.get("value")
+        return v
+    
     class Config:
-        extra = "ignore" # Ignore extra fields from Baserow
+        extra = "ignore"  # Ignore extra fields from Baserow
 
 class AppointmentResponse(BaseModel):
     """Schema for returning appointment data."""
